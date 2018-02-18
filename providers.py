@@ -1,3 +1,5 @@
+"""Updates or initialises the providers table from Truelayer's providers API."""
+
 import requests
 import uuid
 import sqlite3
@@ -11,6 +13,7 @@ z=requests.get(url)
 providers=(z.json())
 my_dict={}
 
+#used to initialise the table with daba. Should not be regularly called. Creates entirely new UUIDs for each entry.
 def populate_providers():
     c.execute("SELECT COUNT(*) FROM providers")
     if c.rowcount != -1:
@@ -30,6 +33,7 @@ def populate_providers():
         status={'code':200,'desc':'Success'}
         return(status)
 
+#used to completely delete the table. Potentially delete this method if not required in the future or dangerous.
 def reset_providers(confirm):
     if confirm=="Yes. Reset the table.":
         c.execute("DELETE FROM providers")
@@ -40,6 +44,8 @@ def reset_providers(confirm):
         status={'code':400,'desc':'You have not reset the table.'}
         return(status)
 
+""" used to update the providers table with new information or new records. Holds UUID constant as well as provider ID.
+    Can potentially create a duplicate records if Truelayer changed the provider_id """
 
 def update_providers():
     z = requests.get(url)
