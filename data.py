@@ -3,4 +3,6 @@
 import auth
 import user
 
-print(user.uid("goldader@gmail.com"))
+#print(user.uid("goldader@gmail.com")
+
+print(user.f_name("goldader@gmail.com"))

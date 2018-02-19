@@ -38,6 +38,48 @@ class User(object):
         else:
             return(id[0])
 
+def f_name(email):
+    import sqlite3
+    conn = sqlite3.connect('/Users/jgoldader/lbypl.db')
+    c = conn.cursor()
+    c.execute("SELECT f_name FROM users WHERE user_id=?", [uid(email)])
+    return(c.fetchone()[0])
+
+def l_name(email):
+    import sqlite3
+    conn = sqlite3.connect('/Users/jgoldader/lbypl.db')
+    c = conn.cursor()
+    c.execute("SELECT l_name FROM users WHERE user_id=?", [uid(email)])
+    return(c.fetchone()[0])
+
+def email_secondary(email):
+    import sqlite3
+    conn = sqlite3.connect('/Users/jgoldader/lbypl.db')
+    c = conn.cursor()
+    c.execute("SELECT email_secondary FROM users WHERE user_id=?", [uid(email)])
+    return (c.fetchone()[0])
+
+def postcode(email):
+    import sqlite3
+    conn = sqlite3.connect('/Users/jgoldader/lbypl.db')
+    c = conn.cursor()
+    c.execute("SELECT postcode FROM users WHERE user_id=?", [uid(email)])
+    return (c.fetchone()[0])
+
+def gender(email):
+    import sqlite3
+    conn = sqlite3.connect('/Users/jgoldader/lbypl.db')
+    c = conn.cursor()
+    c.execute("SELECT gender FROM users WHERE user_id=?", [uid(email)])
+    return (c.fetchone()[0])
+
+def other(email):
+    import sqlite3
+    conn = sqlite3.connect('/Users/jgoldader/lbypl.db')
+    c = conn.cursor()
+    c.execute("SELECT other FROM users WHERE user_id=?", [uid(email)])
+    return (c.fetchone()[0])
+
 def user_columns():
     #returns the columns in the users table as a list for simpler use in various user update routines.
     import sqlite3
@@ -54,14 +96,13 @@ def uid(email):
     import sqlite3
     conn = sqlite3.connect('/Users/jgoldader/lbypl.db')
     c = conn.cursor()
-    c.execute("SELECT * FROM users WHERE email_primary=?", [email])
+    c.execute("SELECT user_id FROM users WHERE email_primary=?", [email])
     id = c.fetchone()
     conn.close()
     if id == None:
         return ('400')
     else:
         return (id[0])
-
 
 def user_update(updates,user_id):
     #updates user information passed in via a dictionary with a corresponding user_id
@@ -134,6 +175,15 @@ def user_update(updates,user_id):
             finally:
                 conn.commit()
     conn.close()
+
+
+print(f_name('goldader@gmail.com'))
+print(l_name('goldader@gmail.com'))
+print(email_secondary("goldader@gmail.com"))
+print(postcode("goldader@gmail.com"))
+print(gender("goldader@gmail.com"))
+print(other("goldader@gmail.com"))
+
 
 
 """ Various Test calls are below. Delete when no longer necessary
