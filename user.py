@@ -8,19 +8,6 @@ class User(object):
         self.email_primary = email_primary
         User.user=email_primary
 
-    def __repr__(self):
-        # returns the UUID associated with a user or a code 400 if they do not exist
-        import sqlite3
-        conn = sqlite3.connect('/Users/jgoldader/lbypl.db')
-        c = conn.cursor()
-        c.execute("SELECT * FROM users WHERE email_primary=?", [User.user])
-        id = c.fetchone()
-        conn.close()
-        if id == None:
-            return ('400')
-        else:
-            return (str(id[0]))
-
 def create_user():
     # creates a user_id if necessary
     import uuid
@@ -129,8 +116,12 @@ def extra_data_update(extra_data):
             c.execute(xdata_phrase)
         except sqlite3.Error as e:
             conn.rollback()
+            status = {'code': '400', 'desc': 'db write failed'}
+            return (status)
         finally:
-            conn.commit()
+            conn.commit()  # no close is called as that is left for the main body of code
+            status = {'code': '200', 'desc': 'success'}
+            return (status)
 
 def user_update(updates):
     # updates user information passed in via a dictionary with a corresponding user_id
@@ -171,10 +162,20 @@ def user_update(updates):
             c.execute(phrase)
         except sqlite3.Error as e:
             conn.rollback()
+            status = {'code': 400, 'desc': 'db update failed.'}
+            conn.close()
+            return (status)
         finally:
             conn.commit()
-            extra_data_update(extra_data)
-            conn.close()
+            if extra_data_update(extra_data)==400:
+                status={'code':201,'desc':'Partial success. User update succeeded but extra data update failed.'}
+                conn.close()
+                return(status)
+            else:
+                status={'code':200,'desc':'Success'}
+                conn.close()
+                return(status)
+
     else:
         for k in db_updates.keys():
             phrase = "UPDATE users SET %s='%s' WHERE user_id='%s'" % (k, db_updates[k], user)
@@ -183,26 +184,39 @@ def user_update(updates):
             c.execute(phrase)
         except sqlite3.Error as e:
             conn.rollback()
+            status = {'code': 400, 'desc': 'db update failed.'}
+            conn.close()
+            return (status)
         finally:
             conn.commit()
-            extra_data_update(extra_data)
-            conn.close()
+            if extra_data_update(extra_data)==400:
+                status={'code':201,'desc':'Partial success. User update succeeded but extra data update failed.'}
+                conn.close()
+                return(status)
+            else:
+                status={'code':200,'desc':'Success'}
+                conn.close()
+                return(status)
     conn.close()
+
 
 
 """ Various Test calls are below. Delete when no longer necessary
 
 new_user=User("goldader@gmail.com")
+updates={'f_name':'John','l_name':'Goldader','email_secondary':'jgoldader@gmail.com','age':'45','facebook_id':'jgoldader'}
+user_update(updates)
+
+
 print(uid("goldader@gmail.com"))
 col_list=user_columns()
 print(col_list)
 
 user=uid('goldader@gmail.com')
 
-updates={'f_name':'fred','l_name':'george','email_secondary':'jgoldader@gmail.com','age':'45','facebook_id':'jgoldader'}
 user_update(updates,user)
 
 updates={'f_name':'frank','age':'72'}
-user_update(updates,user)
 
 """
+
