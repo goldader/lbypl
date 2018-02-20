@@ -1,14 +1,14 @@
 import user
-import tl_auth
+import auth
 
 import sqlite3
 
 conn = sqlite3.connect('/Users/jgoldader/lbypl.db')
 c = conn.cursor()
 
-tl_auth.TL_auth("goldader@gmail.com")
+auth.Auth("goldader@gmail.com")
 #print(new_token('mock','12345'))
-col_list=tl_auth.account_columns()
+col_list=auth.account_columns()
 print("col_list = %s" % col_list)
 cols=""
 for i in range(0,len(col_list)):
