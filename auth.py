@@ -97,7 +97,6 @@ def refresh(provider_id):
                 phrase += "%s='%s'" % (k, str(std_dict[k]))
         phrase = "UPDATE accounts SET %s WHERE user_id = '%s' and provider_id = '%s' and r_token= '%s'" % (phrase, Auth.uid, provider_id, refresh_token)
         phrase = phrase.strip()
-        print(phrase)
 
         # write data to the database
         try:
@@ -218,18 +217,32 @@ def new_token(provider_id,access_code):
             return(status)
 
 def access_token(provider_id):
-    from datetime import datetime
+    from datetime import datetime,timedelta
 
     import sqlite3
     conn = sqlite3.connect('/Users/jgoldader/lbypl.db')
     c = conn.cursor()
 
-    c.execute("select a_token from accounts where user_id=? and provider_id=?", (Auth.uid, provider_id))
-    token=c.fetchone()[0]
-    return(token)
+    # get the expiry value for the current token
+    c.execute("select r_lasttime, r_sec, a_token from accounts where user_id=? and provider_id=?", (Auth.uid, provider_id))
+    v=(c.fetchone())
+    r_lasttime=v[0]
+    r_sec=v[1]-3550 # use an expiry somewhat shorter in case processing time expires a token prior to using it
+    # set expiry value
+    expiry=timedelta(seconds=r_sec)+datetime.strptime(r_lasttime.split(".")[0],'%Y-%m-%d %H:%M:%S')
+    # compare now to the expiry to determine if the old token is usable or a new one is required
+    if datetime.now() < expiry: # issue the existing code
+        return(v[2])
+    else: # requests a new token, save it to the db, and issue it
+        refresh(provider_id)
+        c.execute("select a_token from accounts where user_id=? and provider_id=?", (Auth.uid, provider_id))
+        return(c.fetchone()[0])
 
 """
-Various testing calls - delete when not required any longer
-TL_auth("goldader@gmail.com")
+Auth("goldader@gmail.com")
 print(access_token('hsbc'))
+
+
+Various testing calls - delete when not required any longer
+
 """
