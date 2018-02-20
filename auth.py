@@ -7,7 +7,7 @@ import user
 client_id="goldader-znsm"
 client_secret="xlbucdespuhv4zsdf8y2z"
 
-token_url="https://auth.truelayer.com/connect/token"
+token_url='https://auth.truelayer.com/connect/token'
 red_url="https://console.truelayer.com/redirect-page"
 access_code='dafbed9a729d46a51447f0849510f23a0f632ecca8e8af1fcba4676089507a75'
 refresh_token='6c3a6a3acd3d058c9a814b12b202a5276245fc199417a98c9de362493167cad3'
