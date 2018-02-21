@@ -72,7 +72,7 @@ def refresh(provider_id):
     if z.status_code==200: #check if API call is a success
         #map the json response to our data structure
         temp_dict = z.json()
-
+        print(z.json())
         # translate a portion of the json response into a dictionary mathing our table. The rest goes into extra_data
         map_dict={'access_token':'a_token','expires_in':'r_sec','refresh_token':'r_token'} #later, change this to a mapping table and generate dynamically
         std_dict={'a_token':'','r_sec':'','r_token':''}
@@ -178,10 +178,10 @@ def new_token(provider_id,access_code):
             for i in range(0,len(col_list)):
                 if col_list[i] in std_dict.keys():
                     values.append(std_dict[col_list[i]])
-                    print("values = %s" % values) # delete after testing
+                    #print("values = %s" % values) # delete after testing
                 else:
                     values.append("")
-                    print("values = %s "% values) # delete after testing
+                    #print("values = %s "% values) # delete after testing
 
             # create variable places for use in the SQL insert statement to ensure the insert works correctly
             places = "?," * (len(col_list) - 1) + '?'
@@ -239,11 +239,8 @@ def access_token(provider_id):
         return(c.fetchone()[0])
 
 
-"""
-Auth("goldader@gmail.com")
-print(access_token('hsbc'))
 
+#Various testing calls - delete when not required any longer
 
-Various testing calls - delete when not required any longer
-
-"""
+#Auth("bill@fred.com")
+#new_token('mock','f73283d2a1eb8cdf026a9ca1543263e9906a622005dff3950d4d809939321de0')
