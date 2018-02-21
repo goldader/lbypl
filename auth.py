@@ -72,7 +72,8 @@ def refresh(provider_id):
     if z.status_code==200: #check if API call is a success
         #map the json response to our data structure
         temp_dict = z.json()
-        print(z.json())
+        #print(z.json()) # leave this line in the code for potential future debugging
+
         # translate a portion of the json response into a dictionary mathing our table. The rest goes into extra_data
         map_dict={'access_token':'a_token','expires_in':'r_sec','refresh_token':'r_token'} #later, change this to a mapping table and generate dynamically
         std_dict={'a_token':'','r_sec':'','r_token':''}
@@ -123,7 +124,7 @@ def refresh(provider_id):
 
     else:
         status = {'code': z.status_code, 'desc': 'Truelayer update failure'}
-        print(z.status_code)
+        # print(z.status_code) # leave in the code for potential debugging
         return (status)
 
 def new_token(provider_id,access_code):

@@ -1,8 +1,4 @@
-"""module for accessing data via truelayer for a given account"""
-
-import auth
-import requests
-
+"""module to unpack Truelayer json responses into arrays or individual items"""
 def depth(x):
     if type(x) is dict and x:
         return 1 + max(depth(x[a]) for a in x)
@@ -42,8 +38,13 @@ def json_output(json_input):
     finally:
         return(dataset)
 
-auth.Auth('bill@fred.com')
-token=auth.access_token('mock')
+""" lines used for testing and develompent
+
+#import auth
+#import requests
+
+auth.Auth('goldader@gmail.com')
+token=auth.access_token('hsbc')
 
 info_url="https://api.truelayer.com/data/v1/info"
 token_phrase="Bearer %s" % token
@@ -56,3 +57,5 @@ results=all_results['results']
 
 for i in range(0,len(results)):
     print(json_output(results[i]))
+
+"""
