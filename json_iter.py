@@ -23,14 +23,22 @@ def dict_generator2(indict, pre=None):
         yield pre + [indict]
 
 def json_output(json_input):
+    #add code to automatically expand a second key of the same name with a 1,2,3 to ensure the list is correct
     a = dict_generator2(json_input)
     dataset = {}
     try:
         a = dict_generator2(json_input)
+        previous=''
+        count=0
         while True:
             value = next(a)
             if len(value) > 2:
                 value.pop(0)
+            if value[0]==previous:
+                count+=1
+                value[0]+=" - %s" % count
+            else:
+                count=0
             # print(value)
             dataset[value[0]] = value[1]
     except StopIteration:
@@ -38,13 +46,13 @@ def json_output(json_input):
     finally:
         return(dataset)
 
-""" lines used for testing and develompent
+#""" lines used for testing and develompent
 
-#import auth
-#import requests
+import auth
+import requests
 
-auth.Auth('goldader@gmail.com')
-token=auth.access_token('hsbc')
+auth.Auth('bill@fred.com')
+token=auth.access_token('mock')
 
 info_url="https://api.truelayer.com/data/v1/info"
 token_phrase="Bearer %s" % token
@@ -55,7 +63,12 @@ z=requests.get(info_url, headers=headers)
 all_results=z.json()
 results=all_results['results']
 
+x=dict_generator2(results[1])
+for i in range(0,9):
+    print(next(x))
+
 for i in range(0,len(results)):
+    #print(results[i])
     print(json_output(results[i]))
 
-"""
+#"""

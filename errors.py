@@ -1,6 +1,13 @@
-import user
-import auth
+#import user
+#import auth
+import tbl_maint
 
+tbl_maint.tbl_maint("users")
+tbl_maint.tbl_maint.c.execute("select * from accounts")
+for i in tbl_maint.tbl_maint.c.fetchone():
+    print(len(i))
+
+"""
 import sqlite3
 
 conn = sqlite3.connect('/Users/jgoldader/lbypl.db')
@@ -48,7 +55,7 @@ print(phrase)
 #updates={'f_name':'bobby','l_name':'smith'}
 #updates={'f_name':'geoff','facebook_id':'l@l.com','old_id':'crap'}
 #user.user_update(updates)
-"""
+
 
 #import tl_auth
 #tl_auth.TL_auth('bill@fred.com')
