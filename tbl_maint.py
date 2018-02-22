@@ -287,19 +287,41 @@ class Tbl_maint(object):
             info_url="https://api.truelayer.com/data/v1/accounts/%s/balance" % account_id[0]
             z = requests.get(info_url, headers=headers)
             results = z.json()['results']
-            print(results)
 
             # parse results for writing to tables
             for i in range(0, len(results)):
                 balance_data = json_output(results[i])
-                print(balance_data)
-            # write the results to the table using known routines
+                balance_data['user_id']=user
+                balance_data['account_id']=account_id[0]
+
+                # Call the append routine in case new user data has additional columns
+                Tbl_maint.append_tbl(balance_data)
+
+                # create variable places for use in the SQL insert statement to ensure the insert works correctly
+                places = "?," * (len(Tbl_maint.columns()) - 1) + '?'
+
+                # create a SQL execution phrase
+                phrase = "INSERT INTO tl_account_balance VALUES (%s)" % (places)
+                phrase = phrase.strip()
+
+                # align the user data to the columns in order so the inserts work correctly
+                balance_values = Tbl_maint.data_col_match(balance_data)
+
+                # write the balance data to the table for update
+                try:
+                    c.execute(phrase,balance_values)
+                except sqlite3.Error as e:
+                    conn.rollback()
+                    status = {'code': 400, 'desc': 'User info update failed. DB error.'}
+                    return (status)
+                finally:
+                    conn.commit()
+                    status = {'code': 200, 'desc': 'Success'}
+        return (status)
 
 
-
-
-Tbl_maint('tl_account_info')
-Tbl_maint.user_account_balance('bill@fred.com')
+Tbl_maint('tl_account_balance')
+Tbl_maint.user_account_balance('goldader@gmail.com')
 
 """
 import requests
