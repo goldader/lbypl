@@ -261,9 +261,45 @@ class Tbl_maint(object):
         conn.close()
         return(status)
 
+    def user_account_balance(primary_email):
+        import requests
+        from auth import Auth, access_token
+        from json_iter import json_output
+        import sqlite3
+        conn = sqlite3.connect(Tbl_maint.db)
+        c = conn.cursor()
+
+        # identify the user and the provider id related to the access token
+        Auth(primary_email)
+        user=Auth.uid
+        c.execute("select provider_id from accounts where user_id=?",[user])
+        token = access_token(c.fetchone()[0])
+
+        # setup the truelayer API for balance requests
+        token_phrase = "Bearer %s" % token
+        headers = {'Authorization': token_phrase}
+
+        # get the account_ids associated with the user
+        c.execute("select account_id from tl_account_info where user_id=?", [user])
+        accounts=c.fetchall()
+        for i in range(0,len(accounts)):
+            account_id=accounts[i]
+            info_url="https://api.truelayer.com/data/v1/accounts/%s/balance" % account_id[0]
+            z = requests.get(info_url, headers=headers)
+            results = z.json()['results']
+            print(results)
+
+            # parse results for writing to tables
+            for i in range(0, len(results)):
+                balance_data = json_output(results[i])
+                print(balance_data)
+            # write the results to the table using known routines
+
+
+
 
 Tbl_maint('tl_account_info')
-Tbl_maint.user_account_update('goldader@gmail.com')
+Tbl_maint.user_account_balance('bill@fred.com')
 
 """
 import requests
