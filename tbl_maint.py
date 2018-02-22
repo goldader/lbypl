@@ -26,12 +26,21 @@ class Tbl_maint(object):
             col_list = row.keys()
             return (col_list)
 
-    def create_tbl(col_nms):
-        # takes name as a list of names and creates a basic table with all fields as TEXT to be tuned later
+    def create_tbl(json_output):
+        # a set of json output from the json_output function
+        # creates a basic table with all fields as TEXT to be tuned later
         import sqlite3
         conn = sqlite3.connect(Tbl_maint.db)
-        conn.row_factory = sqlite3.Row
+        #conn.row_factory = sqlite3.Row
         c = conn.cursor()
+
+        # use the json to generate a list of column names
+        col_nms=[]
+        col_nms.append('user_id')
+        for k in json_output.keys():
+            col_nms.append(k)
+
+        # set a phrase to be used in the table creation statement
         col_phrase=""
         for i in range(0,len(col_nms)):
             if i < len(col_nms)-1:
@@ -40,6 +49,8 @@ class Tbl_maint(object):
                 col_phrase+="'%s' TEXT" % col_nms[i].lower()
         phrase="create table %s (%s);" % (Tbl_maint.tbl_name,col_phrase)
         #print(phrase)
+
+        #write the data to the database creating a new table from the json input
         try:
             c.execute(phrase)
         except sqlite3.Error as e:
@@ -113,7 +124,7 @@ class Tbl_maint(object):
         conn = sqlite3.connect(Tbl_maint.db)
         c = conn.cursor()
 
-        # identify the user and then call the truelayer apis for the dataset
+        # identify the user and the provider id related to the access token
         Auth(primary_email)
         user=Auth.uid
         c.execute("select provider_id from accounts where user_id=?",[user])
@@ -157,28 +168,125 @@ class Tbl_maint(object):
         conn.close()
         return(status)
 
+    def user_account_update(primary_email):
+        # Updates db with truelayer account information and calls necessary routines for table maintenance
+        import requests
+        from auth import Auth, access_token
+        from json_iter import json_output
+        import sqlite3
+        conn = sqlite3.connect(Tbl_maint.db)
+        c = conn.cursor()
+
+        # identify the user and the provider id related to the access token
+        Auth(primary_email)
+        user=Auth.uid
+        c.execute("select provider_id from accounts where user_id=?",[user])
+        token = access_token(c.fetchone()[0])
+
+        # call truelayer for user info updates
+        info_url = "https://api.truelayer.com/data/v1/accounts"
+        token_phrase = "Bearer %s" % token
+        headers = {'Authorization': token_phrase}
+        z = requests.get(info_url, headers=headers)
+        results = z.json()['results']
+
+        for i in range(0,len(results)):
+            # call json parser to flatten data
+            account_data = json_output(results[i])
+            #print(account_data)
+
+            # Call the append routine in case new user data has additional columns
+            Tbl_maint.append_tbl(account_data)
+
+            # add user to the account_data for db referencing
+            account_data['user_id']=user
+
+            # create a SQL execution phrase and determine update or insert
+            c.execute("select * from tl_account_info where user_id=? and account_id=?",(user,account_data['account_id']))
+            if c.fetchone()==None:
+                print("insert statement")
+                # 'insert' option
+                # align the user data to the columns in order so the inserts work correctly
+                user_values = Tbl_maint.data_col_match(account_data)
+                # define the number of inserts
+                places = "?," * (len(Tbl_maint.columns()) - 1) + '?'
+                # set the insert phrase
+                phrase = "INSERT INTO tl_account_info VALUES (%s)" % (places)
+                phrase = phrase.strip()
+
+                # insert new data
+                try:
+                    c.execute(phrase, user_values)
+                except sqlite3.Error as e:
+                    conn.rollback()
+                    status = {'code': 400, 'desc': 'User info update failed. DB error.'}
+                    return (status)
+                finally:
+                    conn.commit()
+                    status = {'code': 200, 'desc': 'Success'}
+                    #return (status)
+
+            else:
+                print("update statement")
+                # 'update' option
+                update_set=""
+                count=1
+                # create the data update construct avoiding user and account identifiers
+                for k,v in account_data.items():
+                    if k == 'user_id' or k == 'account_id':
+                        pass
+                    else:
+                        if count==len(account_data)-2:
+                            update_set+="'%s' = '%s'" % (k,v)
+                            count+=1
+                        else:
+                            update_set+="'%s' = '%s'," % (k,v)
+                            count+=1
+                # create the update phrase
+                phrase = "update tl_account_info set %s where user_id='%s' and account_id='%s'" % (update_set,user,account_data['account_id'])
+                phrase = phrase.strip()
+
+                # update existing data
+                try:
+                    c.execute(phrase)
+                except sqlite3.Error as e:
+                    conn.rollback()
+                    status = {'code': 400, 'desc': 'User info update failed. DB error.'}
+                    return (status)
+                finally:
+                    conn.commit()
+                    status = {'code': 200, 'desc': 'Success'}
+                    #return (status)
+        status = {'code': 200, 'desc': 'Success'}
+        conn.close()
+        return(status)
+
+
+Tbl_maint('tl_account_info')
+Tbl_maint.user_account_update('goldader@gmail.com')
+
 """
 import requests
 from auth import Auth,access_token
 from json_iter import json_output
 
-Auth('goldader@gmail.com')
-token=access_token('hsbc')
+Auth('bill@fred.com')
+token=access_token('mock')
 
-#info_url="https://api.truelayer.com/data/v1/info"
-#token_phrase="Bearer %s" % token
-#headers = {'Authorization': token_phrase}
+info_url="https://api.truelayer.com/data/v1/accounts"
+token_phrase="Bearer %s" % token
+headers = {'Authorization': token_phrase}
 
-#z=requests.get(info_url, headers=headers)
+z=requests.get(info_url, headers=headers)
 
-#all_results=z.json()
-#results=all_results['results']
+all_results=z.json()
+results=all_results['results']
 
-#user_data=json_output(results[1])
+# instantiate the class
+Tbl_maint("tl_account_info")
 
-#print(user_data)
-Tbl_maint('tl_user_info')
-#print(Tbl_maint.create_tbl(columns))
-#print(Tbl_maint.append_tbl({'ag':1,'fe':2,'x':3}))
-print(Tbl_maint.user_info_update("goldader@gmail.com"))
+#Tbl_maint.user_account_update('bill@fred.com')
+#value=json_output(results[0])
+#print(value)
+#Tbl_maint.create_tbl(value)
 """

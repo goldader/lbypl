@@ -32,8 +32,9 @@ def json_output(json_input):
         count=0
         while True:
             value = next(a)
-            if len(value) > 2:
-                value.pop(0)
+            if len(value)==3:
+                value[0]+=".%s" % value[1]
+                value.pop(1)
             if value[0].lower()==previous:
                 count+=1
                 value[0]+="_%s" % count
@@ -47,15 +48,15 @@ def json_output(json_input):
     finally:
         return(dataset)
 
-""" lines used for testing and develompent
 
+"""
 import auth
 import requests
 
-auth.Auth('bill@fred.com')
-token=auth.access_token('mock')
+auth.Auth('goldader@gmail.com')
+token=auth.access_token('hsbc')
 
-info_url="https://api.truelayer.com/data/v1/info"
+info_url="https://api.truelayer.com/data/v1/accounts"
 token_phrase="Bearer %s" % token
 headers = {'Authorization': token_phrase}
 
@@ -63,8 +64,8 @@ z=requests.get(info_url, headers=headers)
 
 all_results=z.json()
 results=all_results['results']
+print(results)
 
 for i in range(0,len(results)):
     print(json_output(results[i]))
-
 """
