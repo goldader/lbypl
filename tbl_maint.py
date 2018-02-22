@@ -20,8 +20,11 @@ class Tbl_maint(object):
         phrase="select * from %s" % Tbl_maint.tbl_name
         c.execute(phrase)
         row = c.fetchone()
-        col_list = row.keys()
-        return (col_list)
+        if row==None: # fix this later by adding a row and then deleting it. use a random identifier to accomplish
+            return(400)
+        else:
+            col_list = row.keys()
+            return (col_list)
 
     def create_tbl(col_nms):
         # takes name as a list of names and creates a basic table with all fields as TEXT to be tuned later
@@ -32,11 +35,11 @@ class Tbl_maint(object):
         col_phrase=""
         for i in range(0,len(col_nms)):
             if i < len(col_nms)-1:
-                col_phrase+="'%s' TEXT," % col_nms[i]
+                col_phrase+="'%s' TEXT," % col_nms[i].lower()
             elif i == len(col_nms)-1:
-                col_phrase+="'%s' TEXT" % col_nms[i]
+                col_phrase+="'%s' TEXT" % col_nms[i].lower()
         phrase="create table %s (%s);" % (Tbl_maint.tbl_name,col_phrase)
-        print(phrase)
+        #print(phrase)
         try:
             c.execute(phrase)
         except sqlite3.Error as e:
@@ -67,15 +70,42 @@ class Tbl_maint(object):
                 #print("values = %s "% output_values) # delete after testing
         return(output_values)
 
-    def append_tbl(tbl_nm,data):
-        #check if data keys are in the columns names.  if not, append the table with the column names
-        #use tbl_nm to call columns
-        #compare using in
-        #write a list with anything not in
-        #append that list to columns (order doesn't matter truly)
-        pass
+    def append_tbl(data):
+        """ this function will append columns to truelayer tables with fields that appear in json repsonses.
+            it should not be utilised directly for other table maintenance.
+            'data' should be a dictionary generally the flattened truelayer json
+        """
+        import sqlite3
+        conn = sqlite3.connect(Tbl_maint.db)
+        c = conn.cursor()
 
-    def user_info_update(primary_email): #update to receive a user email and get user_data from an api call inside the function
+        # get the columns of the table to be checked. requires class initialisation
+        col_list = Tbl_maint.columns()
+        if col_list==400: # this should be removed later when the col_list features is updated
+            status={'code':400,'desc':'Alter failed. add temp data to table to resolve and then delete temp data'}
+            return(status)
+        else:
+            # check each key in the data to see if a column exists
+            for k in data.keys():
+                if k.lower() in col_list:
+                    pass
+                # if a column does not exist corresponding to the key, create it
+                else:
+                    phrase="alter table %s add column '%s' text" % (Tbl_maint.tbl_name,k.lower())
+                    try:
+                        c.execute(phrase)
+                    except sqlite3.Error as e:
+                        conn.rollback()
+                        status = {'code': 400, 'desc': 'Table append failed. DB error.'}
+                        return (status)
+                    finally:
+                        conn.commit()
+            status = {'code': 200, 'desc': 'Success'}
+            conn.close()
+            return(status)
+
+    def user_info_update(primary_email):
+        # Updates db with truelayer user information and calls necessary routines for table maintenance
         import requests
         from auth import Auth, access_token
         from json_iter import json_output
@@ -86,7 +116,8 @@ class Tbl_maint(object):
         # identify the user and then call the truelayer apis for the dataset
         Auth(primary_email)
         user=Auth.uid
-        token = access_token('mock')
+        c.execute("select provider_id from accounts where user_id=?",[user])
+        token = access_token(c.fetchone()[0])
 
         # call truelayer for user info updates
         info_url = "https://api.truelayer.com/data/v1/info"
@@ -100,7 +131,7 @@ class Tbl_maint(object):
             user_data = json_output(results[i])
 
             # Call the append routine in case new user data has additional columns
-            #append_tbl('tl_user_info',data)
+            Tbl_maint.append_tbl(user_data)
 
             # create variable places for use in the SQL insert statement to ensure the insert works correctly
             user_data['user_id']=user
@@ -131,30 +162,23 @@ import requests
 from auth import Auth,access_token
 from json_iter import json_output
 
-Auth('bill@fred.com')
-token=access_token('mock')
+Auth('goldader@gmail.com')
+token=access_token('hsbc')
 
-info_url="https://api.truelayer.com/data/v1/info"
-token_phrase="Bearer %s" % token
-headers = {'Authorization': token_phrase}
+#info_url="https://api.truelayer.com/data/v1/info"
+#token_phrase="Bearer %s" % token
+#headers = {'Authorization': token_phrase}
 
-z=requests.get(info_url, headers=headers)
+#z=requests.get(info_url, headers=headers)
 
-all_results=z.json()
-results=all_results['results']
-
-col_list=[]
-
-for i in range(0,len(results)):
-    output=json_output(results[i])
-    #print(output)
-    if len(output)>len(col_list):
-        col_list=[*output]
-col_list.insert(0,'user_id')
-print("col_list = %s" % col_list)
-"""
+#all_results=z.json()
+#results=all_results['results']
 
 #user_data=json_output(results[1])
+
 #print(user_data)
-Tbl_maint("tl_user_info")
-print(Tbl_maint.user_info_update('bill@fred.com'))
+Tbl_maint('tl_user_info')
+#print(Tbl_maint.create_tbl(columns))
+#print(Tbl_maint.append_tbl({'ag':1,'fe':2,'x':3}))
+print(Tbl_maint.user_info_update("goldader@gmail.com"))
+"""
