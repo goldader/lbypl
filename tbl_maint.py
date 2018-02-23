@@ -179,86 +179,93 @@ class Tbl_maint(object):
         conn = sqlite3.connect(Tbl_maint.db)
         c = conn.cursor()
 
+        # instantiate the class
+        # Tbl_maint('tl_user_account_info')
+
         # identify the user and the provider id related to the access token
         Auth(primary_email)
         user=Auth.uid
-        c.execute("select provider_id from accounts where user_id=?",[user])
-        token = access_token(c.fetchone()[0])
+        c.execute("select distinct provider_id from accounts where user_id=?",[user])
+        providers=c.fetchall() # get a list of all providers for a given user
 
-        # call truelayer for user info updates
+        # set Truelayer API url for account info
         info_url = "https://api.truelayer.com/data/v1/accounts"
-        token_phrase = "Bearer %s" % token
-        headers = {'Authorization': token_phrase}
-        z = requests.get(info_url, headers=headers)
-        results = z.json()['results']
 
-        for i in range(0,len(results)):
-            # call json parser to flatten data
-            account_data = json_output(results[i])
-            #print(account_data)
+        # loop through all providers of a given user to get transactions for each account
+        for i in range(0,len(providers)):
+            provider_id=providers[i] #get the individual provider_id
+            token = access_token(provider_id[0])
 
-            # Call the append routine in case new user data has additional columns
-            Tbl_maint.append_tbl(account_data)
+            # call truelayer for account updates
+            token_phrase = "Bearer %s" % token
+            headers = {'Authorization': token_phrase}
+            z = requests.get(info_url, headers=headers)
+            results = z.json()['results']
 
-            # add user to the account_data for db referencing
-            account_data['user_id']=user
+            for i in range(0,len(results)):
+                # call json parser to flatten data
+                account_data = json_output(results[i])
 
-            # create a SQL execution phrase and determine update or insert
-            c.execute("select * from tl_account_info where user_id=? and account_id=?",(user,account_data['account_id']))
-            if c.fetchone()==None:
-                print("insert statement")
-                # 'insert' option
-                # align the user data to the columns in order so the inserts work correctly
-                user_values = Tbl_maint.data_col_match(account_data)
-                # define the number of inserts
-                places = "?," * (len(Tbl_maint.columns()) - 1) + '?'
-                # set the insert phrase
-                phrase = "INSERT INTO tl_account_info VALUES (%s)" % (places)
-                phrase = phrase.strip()
+                # Call the append routine in case new user data has additional columns
+                Tbl_maint.append_tbl(account_data)
 
-                # insert new data
-                try:
-                    c.execute(phrase, user_values)
-                except sqlite3.Error as e:
-                    conn.rollback()
-                    status = {'code': 400, 'desc': 'User info update failed. DB error.'}
-                    return (status)
-                finally:
-                    conn.commit()
-                    status = {'code': 200, 'desc': 'Success'}
-                    #return (status)
+                # add user to the account_data for db referencing
+                account_data['user_id']=user
 
-            else:
-                print("update statement")
-                # 'update' option
-                update_set=""
-                count=1
-                # create the data update construct avoiding user and account identifiers
-                for k,v in account_data.items():
-                    if k == 'user_id' or k == 'account_id':
-                        pass
-                    else:
-                        if count==len(account_data)-2:
-                            update_set+="'%s' = '%s'" % (k,v)
-                            count+=1
+                # create a SQL execution phrase and determine update or insert
+                c.execute("select * from tl_account_info where user_id=? and account_id=?",(user,account_data['account_id']))
+                if c.fetchone()==None:
+                    # this is the 'insert' option
+                    # align the user data to the columns in order so the inserts work correctly
+                    user_values = Tbl_maint.data_col_match(account_data)
+                    # define the number of inserts
+                    places = "?," * (len(Tbl_maint.columns()) - 1) + '?'
+                    # set the insert phrase
+                    phrase = "INSERT INTO tl_account_info VALUES (%s)" % (places)
+                    phrase = phrase.strip()
+
+                    # insert new data
+                    try:
+                        c.execute(phrase, user_values)
+                    except sqlite3.Error as e:
+                        conn.rollback()
+                        status = {'code': 400, 'desc': 'User info update failed. DB error.'}
+                        return (status)
+                    finally:
+                        conn.commit()
+                        status = {'code': 200, 'desc': 'Success'}
+                        #return (status)
+
+                else:
+                    # this is the 'update' option
+                    update_set=""
+                    count=1
+                    # create the data update construct avoiding user and account identifiers
+                    for k,v in account_data.items():
+                        if k == 'user_id' or k == 'account_id':
+                            pass
                         else:
-                            update_set+="'%s' = '%s'," % (k,v)
-                            count+=1
-                # create the update phrase
-                phrase = "update tl_account_info set %s where user_id='%s' and account_id='%s'" % (update_set,user,account_data['account_id'])
-                phrase = phrase.strip()
+                            if count==len(account_data)-2:
+                                update_set+="'%s' = '%s'" % (k,v)
+                                count+=1
+                            else:
+                                update_set+="'%s' = '%s'," % (k,v)
+                                count+=1
+                    # create the update phrase
+                    phrase = "update tl_account_info set %s where user_id='%s' and account_id='%s'" % (update_set,user,account_data['account_id'])
+                    phrase = phrase.strip()
 
-                # update existing data
-                try:
-                    c.execute(phrase)
-                except sqlite3.Error as e:
-                    conn.rollback()
-                    status = {'code': 400, 'desc': 'User info update failed. DB error.'}
-                    return (status)
-                finally:
-                    conn.commit()
-                    status = {'code': 200, 'desc': 'Success'}
-                    #return (status)
+                    # update existing data
+                    try:
+                        c.execute(phrase)
+                    except sqlite3.Error as e:
+                        conn.rollback()
+                        status = {'code': 400, 'desc': 'User info update failed. DB error.'}
+                        return (status)
+                    finally:
+                        conn.commit()
+                        status = {'code': 200, 'desc': 'Success'}
+                        #return (status)
         status = {'code': 200, 'desc': 'Success'}
         conn.close()
         return(status)
@@ -275,52 +282,58 @@ class Tbl_maint(object):
         # identify the user and the provider id related to the access token
         Auth(primary_email)
         user=Auth.uid
-        c.execute("select provider_id from accounts where user_id=?",[user])
-        token = access_token(c.fetchone()[0])
-        print(token)
+        c.execute("select distinct provider_id from accounts where user_id=?",[user])
+        providers=c.fetchall()
 
-        # setup the truelayer API for balance requests
-        token_phrase = "Bearer %s" % token
-        headers = {'Authorization': token_phrase}
+        # loop through all providers of a given user to get balance for each account
+        for i in range(0,len(providers)):
+            provider_id=providers[i] #get the individual provider_id
+            token = access_token(provider_id[0])
 
-        # get the account_ids associated with the user
-        c.execute("select account_id from tl_account_info where user_id=?", [user])
-        accounts=c.fetchall()
-        for i in range(0,len(accounts)):
-            account_id=accounts[i]
-            info_url="https://api.truelayer.com/data/v1/accounts/%s/balance" % account_id[0]
-            z = requests.get(info_url, headers=headers)
-            results = z.json()['results']
+            # setup the truelayer API for balance requests
+            token_phrase = "Bearer %s" % token
+            headers = {'Authorization': token_phrase}
 
-            # parse results for writing to tables
-            for i in range(0, len(results)):
-                balance_data = json_output(results[i])
-                balance_data['user_id']=user
-                balance_data['account_id']=account_id[0]
+            # get the account_ids associated with the user
+            c.execute('select distinct account_id from tl_account_info where user_id=? and "provider.provider_id"=?', (user,provider_id[0]))
+            accounts=c.fetchall()
 
-                # Call the append routine in case new user data has additional columns
-                Tbl_maint.append_tbl(balance_data)
+            # for each account get the lastest balance
+            for i in range(0,len(accounts)):
+                account_id=accounts[i]
+                info_url="https://api.truelayer.com/data/v1/accounts/%s/balance" % account_id[0]
+                z = requests.get(info_url, headers=headers)
+                results = z.json()['results']
 
-                # create variable places for use in the SQL insert statement to ensure the insert works correctly
-                places = "?," * (len(Tbl_maint.columns()) - 1) + '?'
+                # parse results for writing to tables
+                for i in range(0, len(results)):
+                    balance_data = json_output(results[i])
+                    balance_data['user_id']=user
+                    balance_data['account_id']=account_id[0]
 
-                # create a SQL execution phrase
-                phrase = "INSERT INTO tl_account_balance VALUES (%s)" % (places)
-                phrase = phrase.strip()
+                    # Call the append routine in case new user data has additional columns
+                    Tbl_maint.append_tbl(balance_data)
 
-                # align the user data to the columns in order so the inserts work correctly
-                balance_values = Tbl_maint.data_col_match(balance_data)
+                    # create variable places for use in the SQL insert statement to ensure the insert works correctly
+                    places = "?," * (len(Tbl_maint.columns()) - 1) + '?'
 
-                # write the balance data to the table for update
-                try:
-                    c.execute(phrase,balance_values)
-                except sqlite3.Error as e:
-                    conn.rollback()
-                    status = {'code': 400, 'desc': 'User info update failed. DB error.'}
-                    return (status)
-                finally:
-                    conn.commit()
-                    status = {'code': 200, 'desc': 'Success'}
+                    # create a SQL execution phrase
+                    phrase = "INSERT INTO tl_account_balance VALUES (%s)" % (places)
+                    phrase = phrase.strip()
+
+                    # align the user data to the columns in order so the inserts work correctly
+                    balance_values = Tbl_maint.data_col_match(balance_data)
+
+                    # write the balance data to the table for update
+                    try:
+                        c.execute(phrase,balance_values)
+                    except sqlite3.Error as e:
+                        conn.rollback()
+                        status = {'code': 400, 'desc': 'User info update failed. DB error.'}
+                        return (status)
+                    finally:
+                        conn.commit()
+                        status = {'code': 200, 'desc': 'Success'}
         return (status)
 
     def user_account_trans(primary_email):
@@ -337,7 +350,7 @@ class Tbl_maint(object):
         Auth(primary_email)
         user=Auth.uid
         c.execute("select distinct provider_id from accounts where user_id=?",[user])
-        providers=c.fetchall() # get
+        providers=c.fetchall() # get a list of all providers for a given user
 
         # loop through all providers of a given user to get transactions for each account
         for i in range(0,len(providers)):
@@ -349,7 +362,7 @@ class Tbl_maint(object):
             headers = {'Authorization': token_phrase}
 
             # get the account_ids associated with the user
-            c.execute("select account_id from tl_account_info where user_id=?", [user])
+            c.execute("select distinct account_id from tl_account_info where user_id=? and provider_id=?", (user,provider_id[0]))
             accounts=c.fetchall()
 
             # for each account get the lastest transactions
@@ -403,45 +416,43 @@ class Tbl_maint(object):
         status = {'code': 200, 'desc': 'Success'}
         return ('status')
 
-Tbl_maint('tl_account_trans')
-Tbl_maint.user_account_trans('goldader@gmail.com')
+    def user_card_accounts(primary_email):
+        pass
 
-"""
+Tbl_maint('tl_account_info')
+Tbl_maint.user_account_update('bill@fred.com')
+
+""" Use the below to create tables based on json.  Allows you to check it first. Modify calls as required before doing so
 import requests
-from datetime import datetime, timedelta
 from auth import Auth, access_token
 from json_iter import json_output
 import sqlite3
 conn = sqlite3.connect(Tbl_maint.db)
 c = conn.cursor()
 
+# instantiate the class if required
+Tbl_maint('tl_card_account_info')
+
 # identify the user and the provider id related to the access token
-Auth("goldader@gmail.com")
+Auth("bill@fred.com")
 user=Auth.uid
-c.execute("select provider_id from accounts where user_id=?",[user])
+c.execute("select distinct provider_id from accounts where user_id=?",[user])
 token = access_token(c.fetchone()[0])
 
 # setup the truelayer API for balance requests
 token_phrase = "Bearer %s" % token
 headers = {'Authorization': token_phrase}
 
-# get the account_ids associated with the user
-c.execute("select account_id from tl_account_info where user_id=?", [user])
-accounts=c.fetchall()
-for i in range(0,len(accounts)):
-    account_id=accounts[i]
-    f_date = datetime.now() - timedelta(days=10)
-    # if there are no records, grab the last 90 days. else, set f_date to the below
-    # f_date = query for the max date of updated transactions
-    e_date=datetime.now()
-    info_url="https://api.truelayer.com/data/v1/accounts/%s/transactions?from=%s&to=%s" % (account_id[0],f_date,e_date)
-    z = requests.get(info_url, headers=headers)
-    results = z.json()['results']
-    #print('results len = %s and = %s' % (len(results),results))
-    output = json_output(results[i])
-    Tbl_maint.create_tbl(output,True,True)
+info_url = "https://api.truelayer.com/data/v1/cards"
+z = requests.get(info_url, headers=headers)
+
+all_results=z.json()
+results=all_results['results']
+print("Results len %s - %s" % (len(results),results))
+
+for i in range(0,len(results)):
+    json_output_results=json_output(results[i])
+    print("Json Output len %s - %s" % (len(json_output_results),json_output_results))
+    Tbl_maint.create_tbl(json_output_results,True,False)
     break
-    #for i in range(0,len(results)):
-        #output=json_output(results[i])
-        #print("json len = %s and output = %s" % (len(output),output))
 """

@@ -50,13 +50,21 @@ def json_output(json_input):
 
 
 """
-import auth
+import sqlite3
+from auth import Auth, access_token
 import requests
+import tbl_maint
 
-auth.Auth('goldader@gmail.com')
-token=auth.access_token('hsbc')
+conn = sqlite3.connect('/Users/jgoldader/lbypl.db')
+c = conn.cursor()
 
-info_url="https://api.truelayer.com/data/v1/accounts"
+tbl_maint.Tbl_maint('tl_user_card_accounts')
+Auth('bill@fred.com')
+user=Auth.uid
+c.execute("select distinct provider_id from accounts where user_id=?",[user])
+token = access_token(c.fetchone()[0])
+
+info_url="https://api.truelayer.com/data/v1/cards"
 token_phrase="Bearer %s" % token
 headers = {'Authorization': token_phrase}
 
@@ -64,8 +72,11 @@ z=requests.get(info_url, headers=headers)
 
 all_results=z.json()
 results=all_results['results']
-print(results)
+print("Results len %s - %s" % (len(results),results))
 
 for i in range(0,len(results)):
-    print(json_output(results[i]))
+    json_output_results=json_output(results[i])
+    print("Json Output len %s - %s" % (len(json_output_results),json_output_results))
+    tbl_maint.Tbl_maint.create_tbl(json_output_results)
+    break
 """
