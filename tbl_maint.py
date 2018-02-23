@@ -515,9 +515,75 @@ class Tbl_maint(object):
         conn.close()
         return (status)
 
+    def tl_card_balance(primary_email):
+        # Updates db with summary balance information from Truelayer for each account of a given user
+        import requests
+        from auth import Auth, access_token
+        from json_iter import json_output
+        import sqlite3
+        conn = sqlite3.connect(Tbl_maint.db)
+        c = conn.cursor()
 
-Tbl_maint('tl_card_account_info')
-Tbl_maint.tl_card_account_info('bill@fred.com')
+        # identify the user and the provider id related to the access token
+        Auth(primary_email)
+        user=Auth.uid
+        c.execute("select distinct provider_id from accounts where user_id=?",[user])
+        providers=c.fetchall()
+
+        # loop through all providers of a given user to get balance for each account
+        for i in range(0,len(providers)):
+            provider_id=providers[i] #get the individual provider_id
+            token = access_token(provider_id[0])
+
+            # setup the truelayer API for balance requests
+            token_phrase = "Bearer %s" % token
+            headers = {'Authorization': token_phrase}
+
+            # get the account_ids associated with the user
+            c.execute('select distinct account_id from tl_card_account_info where user_id=? and "provider.provider_id"=?', (user,provider_id[0]))
+            accounts=c.fetchall()
+
+            # for each account get the lastest balance
+            for i in range(0,len(accounts)):
+                account_id=accounts[i]
+                info_url="https://api.truelayer.com/data/v1/cards/%s/balance" % account_id[0]
+                z = requests.get(info_url, headers=headers)
+                results = z.json()['results']
+
+                # parse results for writing to tables
+                for i in range(0, len(results)):
+                    balance_data = json_output(results[i])
+                    balance_data['user_id']=user
+                    balance_data['account_id']=account_id[0]
+
+                    # Call the append routine in case new user data has additional columns
+                    Tbl_maint.append_tbl(balance_data)
+
+                    # create variable places for use in the SQL insert statement to ensure the insert works correctly
+                    places = "?," * (len(Tbl_maint.columns()) - 1) + '?'
+
+                    # create a SQL execution phrase
+                    phrase = "INSERT INTO %s VALUES (%s)" % (Tbl_maint.tbl_name,places)
+                    phrase = phrase.strip()
+
+                    # align the user data to the columns in order so the inserts work correctly
+                    balance_values = Tbl_maint.data_col_match(balance_data)
+
+                    # write the balance data to the table for update
+                    try:
+                        c.execute(phrase,balance_values)
+                    except sqlite3.Error as e:
+                        conn.rollback()
+                        status = {'code': 400, 'desc': 'User info update failed. DB error.'}
+                        return (status)
+                    finally:
+                        conn.commit()
+        status = {'code': 200, 'desc': 'Success'}
+        return (status)
+
+
+Tbl_maint('tl_card_balance')
+Tbl_maint.tl_card_balance('goldader@gmail.com')
 
 """ Use the below to create tables based on json.  Allows you to check it first. Modify calls as required before doing so
 import requests
@@ -528,28 +594,41 @@ conn = sqlite3.connect(Tbl_maint.db)
 c = conn.cursor()
 
 # instantiate the class if required
-Tbl_maint('tl_card_account_info')
+Tbl_maint('tl_card_balance')
 
 # identify the user and the provider id related to the access token
 Auth("bill@fred.com")
 user=Auth.uid
+print("user = %s" % user)
 c.execute("select distinct provider_id from accounts where user_id=?",[user])
-token = access_token(c.fetchone()[0])
+provider_id=c.fetchone()[0]
+token = access_token(provider_id)
+print("provider id %s" % provider_id)
 
-# setup the truelayer API for balance requests
+# setup the truelayer API for requests
 token_phrase = "Bearer %s" % token
 headers = {'Authorization': token_phrase}
 
-info_url = "https://api.truelayer.com/data/v1/cards"
-z = requests.get(info_url, headers=headers)
+# get the account_ids associated with the user
+c.execute('select distinct account_id from tl_card_account_info where user_id=? and "provider.provider_id"=?', (user, provider_id))
+accounts = c.fetchall()
+print("accounts = %s" % accounts)
 
-all_results=z.json()
-results=all_results['results']
-print("Results len %s - %s" % (len(results),results))
+# for each account / card get the lastest transactions
+for i in range(0, 1): # replace 1 with len(accounts)
+    account_id = accounts[i]
+    print("account_id = %s" % account_id)
 
-for i in range(0,len(results)):
-    json_output_results=json_output(results[i])
-    print("Json Output len %s - %s" % (len(json_output_results),json_output_results))
-    Tbl_maint.create_tbl(json_output_results,True,False)
-    break
+    info_url = "https://api.truelayer.com/data/v1/cards/%s/balance" % account_id
+    z = requests.get(info_url, headers=headers)
+
+    all_results=z.json()
+    results=all_results['results']
+    print("Results len %s - %s" % (len(results),results))
+
+    for i in range(0,len(results)):
+        json_output_results=json_output(results[i])
+        print("Json Output len %s - %s" % (len(json_output_results),json_output_results))
+        Tbl_maint.create_tbl(json_output_results,True,True)
+        break
 """
