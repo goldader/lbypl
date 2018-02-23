@@ -117,7 +117,7 @@ class Tbl_maint(object):
             conn.close()
             return(status)
 
-    def user_info_update(primary_email):
+    def tl_user_info(primary_email):
         # Updates db with truelayer user information and calls necessary routines for table maintenance
         import requests
         from auth import Auth, access_token
@@ -166,11 +166,11 @@ class Tbl_maint(object):
                 return (status)
             finally:
                 conn.commit()
-                status = {'code': 200, 'desc': 'Success'}
+        status = {'code': 200, 'desc': 'Success'}
         conn.close()
         return(status)
 
-    def user_account_update(primary_email):
+    def tl_account_info(primary_email):
         # Updates db with truelayer account information and calls necessary routines for table maintenance
         import requests
         from auth import Auth, access_token
@@ -270,7 +270,7 @@ class Tbl_maint(object):
         conn.close()
         return(status)
 
-    def user_account_balance(primary_email):
+    def tl_account_balance(primary_email):
         # Updates db with summary balance information from Truelayer for each account of a given user
         import requests
         from auth import Auth, access_token
@@ -336,7 +336,7 @@ class Tbl_maint(object):
                         status = {'code': 200, 'desc': 'Success'}
         return (status)
 
-    def user_account_trans(primary_email):
+    def tl_account_trans(primary_email):
         # Updates db with detailed transactions for each user account from Truelayer
         import requests
         from datetime import datetime, timedelta
@@ -416,11 +416,11 @@ class Tbl_maint(object):
         status = {'code': 200, 'desc': 'Success'}
         return ('status')
 
-    def user_card_accounts(primary_email):
+    def tl_card_account_info(primary_email):
         pass
 
-Tbl_maint('tl_account_info')
-Tbl_maint.user_account_update('bill@fred.com')
+Tbl_maint('tl_account_balance')
+Tbl_maint.tl_account_balance('bill@fred.com')
 
 """ Use the below to create tables based on json.  Allows you to check it first. Modify calls as required before doing so
 import requests
