@@ -229,8 +229,10 @@ def access_token(provider_id):
     v=(c.fetchone())
     r_lasttime=v[0]
     r_sec=v[1]-120 # use an expiry somewhat shorter in case processing time expires a token prior to using it
+
     # set expiry value
     expiry=timedelta(seconds=r_sec)+datetime.strptime(r_lasttime.split(".")[0],'%Y-%m-%d %H:%M:%S')
+
     # compare now to the expiry to determine if the old token is usable or a new one is required
     if datetime.now() < expiry: # issue the existing code
         return(v[2])

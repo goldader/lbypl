@@ -26,17 +26,19 @@ class Tbl_maint(object):
             col_list = row.keys()
             return (col_list)
 
-    def create_tbl(json_output):
+    def create_tbl(json_output,user_bool,acct_bool):
         # a set of json output from the json_output function
         # creates a basic table with all fields as TEXT to be tuned later
         import sqlite3
         conn = sqlite3.connect(Tbl_maint.db)
-        #conn.row_factory = sqlite3.Row
         c = conn.cursor()
 
         # use the json to generate a list of column names
         col_nms=[]
-        col_nms.append('user_id')
+        if user_bool==True:
+            col_nms.append('user_id')
+        if acct_bool==True:
+            col_nms.append('account_id')
         for k in json_output.keys():
             col_nms.append(k)
 
@@ -262,6 +264,7 @@ class Tbl_maint(object):
         return(status)
 
     def user_account_balance(primary_email):
+        # Updates db with summary balance information from Truelayer for each account of a given user
         import requests
         from auth import Auth, access_token
         from json_iter import json_output
@@ -274,6 +277,7 @@ class Tbl_maint(object):
         user=Auth.uid
         c.execute("select provider_id from accounts where user_id=?",[user])
         token = access_token(c.fetchone()[0])
+        print(token)
 
         # setup the truelayer API for balance requests
         token_phrase = "Bearer %s" % token
@@ -319,32 +323,125 @@ class Tbl_maint(object):
                     status = {'code': 200, 'desc': 'Success'}
         return (status)
 
+    def user_account_trans(primary_email):
+        # Updates db with detailed transactions for each user account from Truelayer
+        import requests
+        from datetime import datetime, timedelta
+        from auth import Auth, access_token
+        from json_iter import json_output
+        import sqlite3
+        conn = sqlite3.connect(Tbl_maint.db)
+        c = conn.cursor()
 
-Tbl_maint('tl_account_balance')
-Tbl_maint.user_account_balance('goldader@gmail.com')
+        # identify the user and the providers related to the user
+        Auth(primary_email)
+        user=Auth.uid
+        c.execute("select distinct provider_id from accounts where user_id=?",[user])
+        providers=c.fetchall() # get
+
+        # loop through all providers of a given user to get transactions for each account
+        for i in range(0,len(providers)):
+            provider_id=providers[i] #get the individual provider_id
+            token = access_token(provider_id[0])
+
+            # setup the truelayer API for transaction requests
+            token_phrase = "Bearer %s" % token
+            headers = {'Authorization': token_phrase}
+
+            # get the account_ids associated with the user
+            c.execute("select account_id from tl_account_info where user_id=?", [user])
+            accounts=c.fetchall()
+
+            # for each account get the lastest transactions
+            for i in range(0,len(accounts)):
+                account_id=accounts[i]
+
+                # determine the latest timestamp for transaction updates for the given account
+                c.execute("select max(timestamp) from tl_account_trans where user_id=? and account_id=?", (user,account_id[0]))
+                l_date = c.fetchone()[0]
+                if l_date==None:
+                    f_date = (datetime.utcnow() - timedelta(days=180)).strftime("%Y-%m-%d")
+                else:
+                    f_date = datetime.strptime(l_date.split("T")[0], '%Y-%m-%d')
+                e_date=datetime.utcnow().strftime("%Y-%m-%d")
+
+                # call the TrueLayer api to get transaction data using f_date and e_date
+                info_url="https://api.truelayer.com/data/v1/accounts/%s/transactions?from=%s&to=%s" % (account_id[0],f_date,e_date)
+                z = requests.get(info_url, headers=headers)
+                results = z.json()['results']
+                #print('len %s, results = %s' % (len(results), results))
+
+                # parse results for writing to tables
+                for i in range(0, len(results)):
+                    trans_data = json_output(results[i])
+                    trans_data['user_id']=user
+                    trans_data['account_id']=account_id[0]
+                    # print(trans_data)
+
+                    # Call the append routine in case new user data has additional columns
+                    Tbl_maint.append_tbl(trans_data)
+
+                    # create variable places for use in the SQL insert statement to ensure the insert works correctly
+                    places = "?," * (len(Tbl_maint.columns()) - 1) + '?'
+
+                    # create a SQL execution phrase
+                    phrase = "INSERT INTO tl_account_trans VALUES (%s)" % (places)
+                    phrase = phrase.strip()
+    
+                    # align the transaction data to the columns in order so the inserts work correctly
+                    trans_values = Tbl_maint.data_col_match(trans_data)
+
+                    # write the transaction data to the table for update
+                    try:
+                        c.execute(phrase,trans_values)
+                    except sqlite3.Error as e:
+                        conn.rollback()
+                        status = {'code': 400, 'desc': 'User info update failed. DB error.'}
+                        return (status)
+                    finally:
+                        conn.commit()
+        status = {'code': 200, 'desc': 'Success'}
+        return ('status')
+
+Tbl_maint('tl_account_trans')
+Tbl_maint.user_account_trans('goldader@gmail.com')
 
 """
 import requests
-from auth import Auth,access_token
+from datetime import datetime, timedelta
+from auth import Auth, access_token
 from json_iter import json_output
+import sqlite3
+conn = sqlite3.connect(Tbl_maint.db)
+c = conn.cursor()
 
-Auth('bill@fred.com')
-token=access_token('mock')
+# identify the user and the provider id related to the access token
+Auth("goldader@gmail.com")
+user=Auth.uid
+c.execute("select provider_id from accounts where user_id=?",[user])
+token = access_token(c.fetchone()[0])
 
-info_url="https://api.truelayer.com/data/v1/accounts"
-token_phrase="Bearer %s" % token
+# setup the truelayer API for balance requests
+token_phrase = "Bearer %s" % token
 headers = {'Authorization': token_phrase}
 
-z=requests.get(info_url, headers=headers)
-
-all_results=z.json()
-results=all_results['results']
-
-# instantiate the class
-Tbl_maint("tl_account_info")
-
-#Tbl_maint.user_account_update('bill@fred.com')
-#value=json_output(results[0])
-#print(value)
-#Tbl_maint.create_tbl(value)
+# get the account_ids associated with the user
+c.execute("select account_id from tl_account_info where user_id=?", [user])
+accounts=c.fetchall()
+for i in range(0,len(accounts)):
+    account_id=accounts[i]
+    f_date = datetime.now() - timedelta(days=10)
+    # if there are no records, grab the last 90 days. else, set f_date to the below
+    # f_date = query for the max date of updated transactions
+    e_date=datetime.now()
+    info_url="https://api.truelayer.com/data/v1/accounts/%s/transactions?from=%s&to=%s" % (account_id[0],f_date,e_date)
+    z = requests.get(info_url, headers=headers)
+    results = z.json()['results']
+    #print('results len = %s and = %s' % (len(results),results))
+    output = json_output(results[i])
+    Tbl_maint.create_tbl(output,True,True)
+    break
+    #for i in range(0,len(results)):
+        #output=json_output(results[i])
+        #print("json len = %s and output = %s" % (len(output),output))
 """

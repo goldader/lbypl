@@ -23,7 +23,7 @@ def dict_generator2(indict, pre=None):
         yield pre + [indict]
 
 def json_output(json_input):
-    #add code to automatically expand a second key of the same name with a 1,2,3 to ensure the list is correct
+    #flattens nested json for use in various data management activities
     a = dict_generator2(json_input)
     dataset = {}
     try:
