@@ -582,19 +582,20 @@ class Tbl_maint(object):
         return (status)
 
 
-Tbl_maint('tl_card_balance')
-Tbl_maint.tl_card_balance('goldader@gmail.com')
+Tbl_maint('tl_card_trans')
+#Tbl_maint.tl_card_balance('goldader@gmail.com')
 
 """ Use the below to create tables based on json.  Allows you to check it first. Modify calls as required before doing so
 import requests
 from auth import Auth, access_token
 from json_iter import json_output
 import sqlite3
+from datetime import datetime, timedelta
 conn = sqlite3.connect(Tbl_maint.db)
 c = conn.cursor()
 
 # instantiate the class if required
-Tbl_maint('tl_card_balance')
+Tbl_maint('tl_card_trans')
 
 # identify the user and the provider id related to the access token
 Auth("bill@fred.com")
@@ -615,14 +616,25 @@ accounts = c.fetchall()
 print("accounts = %s" % accounts)
 
 # for each account / card get the lastest transactions
-for i in range(0, 1): # replace 1 with len(accounts)
+for i in range(0, len(accounts)): # replace 1 with len(accounts)
     account_id = accounts[i]
     print("account_id = %s" % account_id)
 
-    info_url = "https://api.truelayer.com/data/v1/cards/%s/balance" % account_id
+    f_date = (datetime.utcnow() - timedelta(days=180)).strftime("%Y-%m-%d")
+    #f_date = '2018-01-01'
+    print("from date %s" % f_date)
+    #e_date='2018-02-01'
+    e_date = datetime.utcnow().strftime("%Y-%m-%d")
+    print("end date %s" % e_date)
+
+    # call the TrueLayer api to get transaction data using f_date and e_date
+    #info_url = "https://api.truelayer.com/data/v1/cards/%s/transactions" % (account_id)
+    info_url = "https://api.truelayer.com/data/v1/cards/%s/transactions?from=%s&to=%s" % (account_id[0],f_date,e_date)
     z = requests.get(info_url, headers=headers)
+    print("status = %s" % z.status_code)
 
     all_results=z.json()
+    print(all_results)
     results=all_results['results']
     print("Results len %s - %s" % (len(results),results))
 
