@@ -199,6 +199,8 @@ def user_update(updates):
                 return(status)
     conn.close()
 
+#User('rmacmillan@bink.com')
+#create_user()
 
 
 """ Various Test calls are below. Delete when no longer necessary

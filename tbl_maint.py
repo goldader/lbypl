@@ -129,7 +129,7 @@ class Tbl_maint(object):
         # identify the user and the provider id related to the access token
         Auth(primary_email)
         user=Auth.uid
-        c.execute("select provider_id from accounts where user_id=?",[user])
+        c.execute("select provider_id from tl_accounts where user_id=?",[user])
         token = access_token(c.fetchone()[0])
 
         # call truelayer for user info updates
@@ -185,7 +185,7 @@ class Tbl_maint(object):
         # identify the user and the provider id related to the access token
         Auth(primary_email)
         user=Auth.uid
-        c.execute("select distinct provider_id from accounts where user_id=?",[user])
+        c.execute("select distinct provider_id from tl_accounts where user_id=?",[user])
         providers=c.fetchall() # get a list of all providers for a given user
 
         # set Truelayer API url for account info
@@ -282,7 +282,7 @@ class Tbl_maint(object):
         # identify the user and the provider id related to the access token
         Auth(primary_email)
         user=Auth.uid
-        c.execute("select distinct provider_id from accounts where user_id=?",[user])
+        c.execute("select distinct provider_id from tl_accounts where user_id=?",[user])
         providers=c.fetchall()
 
         # loop through all providers of a given user to get balance for each account
@@ -349,7 +349,7 @@ class Tbl_maint(object):
         # identify the user and the providers related to the user
         Auth(primary_email)
         user=Auth.uid
-        c.execute("select distinct provider_id from accounts where user_id=?",[user])
+        c.execute("select distinct provider_id from tl_accounts where user_id=?",[user])
         providers=c.fetchall() # get a list of all providers for a given user
 
         # loop through all providers of a given user to get transactions for each account
@@ -362,7 +362,7 @@ class Tbl_maint(object):
             headers = {'Authorization': token_phrase}
 
             # get the account_ids associated with the user
-            c.execute("select distinct account_id from tl_account_info where user_id=? and provider_id=?", (user,provider_id[0]))
+            c.execute('select distinct account_id from tl_account_info where user_id=? and "provider.provider_id"=?', (user,provider_id[0]))
             accounts=c.fetchall()
 
             # for each account get the lastest transactions
@@ -428,7 +428,7 @@ class Tbl_maint(object):
         # identify the user and the provider ids related to the access token
         Auth(primary_email)
         user = Auth.uid
-        c.execute("select distinct provider_id from accounts where user_id=?", [user])
+        c.execute("select distinct provider_id from tl_accounts where user_id=?", [user])
         providers = c.fetchall()  # get a list of all providers for a given user
 
         # set Truelayer API url for card account info
@@ -527,7 +527,7 @@ class Tbl_maint(object):
         # identify the user and the provider id related to the access token
         Auth(primary_email)
         user=Auth.uid
-        c.execute("select distinct provider_id from accounts where user_id=?",[user])
+        c.execute("select distinct provider_id from tl_accounts where user_id=?",[user])
         providers=c.fetchall()
 
         # loop through all providers of a given user to get balance for each account
@@ -594,7 +594,7 @@ class Tbl_maint(object):
         # identify the user and the providers related to the user
         Auth(primary_email)
         user = Auth.uid
-        c.execute("select distinct provider_id from accounts where user_id=?", [user])
+        c.execute("select distinct provider_id from tl_accounts where user_id=?", [user])
         providers = c.fetchall()  # get a list of all providers for a given user
 
         # loop through all providers of a given user to get transactions for each account
@@ -663,8 +663,8 @@ class Tbl_maint(object):
         return (status)
 
 
-#Tbl_maint('tl_card_trans')
-#print(Tbl_maint.tl_card_trans('goldader@gmail.com'))
+Tbl_maint('tl_account_trans')
+print(Tbl_maint.tl_account_trans('rmacmillan@bink.com'))
 
 """ Use the below to create tables based on json.  Allows you to check it first. Modify calls as required before doing so
 import requests
@@ -682,7 +682,7 @@ Tbl_maint('tl_card_trans')
 Auth("bill@fred.com")
 user=Auth.uid
 print("user = %s" % user)
-c.execute("select distinct provider_id from accounts where user_id=?",[user])
+c.execute("select distinct provider_id from tl_accounts where user_id=?",[user])
 provider_id=c.fetchone()[0]
 token = access_token(provider_id)
 print("provider id %s" % provider_id)

@@ -61,7 +61,7 @@ c = conn.cursor()
 tbl_maint.Tbl_maint('tl_user_card_accounts')
 Auth('bill@fred.com')
 user=Auth.uid
-c.execute("select distinct provider_id from accounts where user_id=?",[user])
+c.execute("select distinct provider_id from tl_accounts where user_id=?",[user])
 token = access_token(c.fetchone()[0])
 
 info_url="https://api.truelayer.com/data/v1/cards"

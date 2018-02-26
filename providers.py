@@ -7,7 +7,7 @@ import sqlite3
 url="https://auth.truelayer.com/api/providers"
 conn=sqlite3.connect('/Users/jgoldader/lbypl.db')
 c=conn.cursor()
-table='providers'
+table='tl_providers'
 
 z=requests.get(url)
 providers=(z.json())
@@ -15,7 +15,7 @@ my_dict={}
 
 #used to initialise the table with daba. Should not be regularly called. Creates entirely new UUIDs for each entry.
 def populate_providers():
-    c.execute("SELECT COUNT(*) FROM providers")
+    c.execute("SELECT COUNT(*) FROM tl_providers")
     if c.rowcount != -1:
         status={'code':400,'desc':'Disallowed Purge of Providers. Try Update instead'}
         return(status)
@@ -26,7 +26,7 @@ def populate_providers():
             my_dict=providers[i]
             provider_uuid=uuid.uuid4()
             my_dict['provider_uuid'] = str(provider_uuid)
-            c.execute("INSERT INTO providers (provider_id,display_name,logo_url,scopes,provider_UUID) VALUES (?,?,?,?,?)" \
+            c.execute("INSERT INTO tl_providers (provider_id,display_name,logo_url,scopes,provider_UUID) VALUES (?,?,?,?,?)" \
                   , (my_dict['provider_id'], my_dict['display_name'], my_dict['logo_url'], str(my_dict['scopes']),
                      my_dict['provider_uuid']))
         conn.commit()
@@ -36,7 +36,7 @@ def populate_providers():
 #used to completely delete the table. Potentially delete this method if not required in the future or dangerous.
 def reset_providers(confirm):
     if confirm=="Yes. Reset the table.":
-        c.execute("DELETE FROM providers")
+        c.execute("DELETE FROM tl_providers")
         conn.commit()
         status={'code':200,'desc':'Success'}
         return(status)
@@ -53,16 +53,16 @@ def update_providers():
     count=1
     for i in range(0,len(providers)):
         my_dict=providers[i]
-        c.execute("SELECT * FROM providers WHERE provider_id=?",[my_dict['provider_id']])
+        c.execute("SELECT * FROM tl_providers WHERE provider_id=?",[my_dict['provider_id']])
         if c.fetchone()==None:
             provider_uuid=uuid.uuid4()
             my_dict['provider_uuid'] = str(provider_uuid)
-            c.execute("INSERT INTO providers (provider_id,display_name,logo_url,scopes,provider_UUID) VALUES (?,?,?,?,?)" \
+            c.execute("INSERT INTO tl_providers (provider_id,display_name,logo_url,scopes,provider_UUID) VALUES (?,?,?,?,?)" \
                   , (my_dict['provider_id'], my_dict['display_name'], my_dict['logo_url'], str(my_dict['scopes']),
                      my_dict['provider_uuid']))
             conn.commit()
         else:
-            c.execute("UPDATE providers SET display_name=?, logo_url=?, scopes=? WHERE provider_id=?" \
+            c.execute("UPDATE tl_providers SET display_name=?, logo_url=?, scopes=? WHERE provider_id=?" \
                       , (my_dict['display_name'], my_dict['logo_url'], str(my_dict['scopes']), my_dict['provider_id']))
             conn.commit()
     status = {'code': 200, 'desc': 'Success'}

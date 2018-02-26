@@ -3,7 +3,7 @@
 import tbl_maint
 
 tbl_maint.tbl_maint("users")
-tbl_maint.tbl_maint.c.execute("select * from accounts")
+tbl_maint.tbl_maint.c.execute("select * from tl_accounts")
 for i in tbl_maint.tbl_maint.c.fetchone():
     print(len(i))
 

@@ -21,7 +21,7 @@ def account_columns():
     import sqlite3
     connection = sqlite3.connect('/Users/jgoldader/lbypl.db')
     connection.row_factory = sqlite3.Row
-    cursor = connection.execute('SELECT * FROM accounts')
+    cursor = connection.execute('SELECT * FROM tl_accounts')
     # instead of cursor.description:
     row = cursor.fetchone()
     col_list = row.keys()
@@ -38,7 +38,7 @@ def extra_data_update(extra_data,provider_id):
             extra_data = '"%s"' % extra_data
             extra_data = extra_data.replace("{", "")
             extra_data = extra_data.replace("}", "")
-            xdata_phrase = "UPDATE accounts SET other=%s WHERE user_id='%s' and provider_id='%s'" % (extra_data, Auth.uid, provider_id)
+            xdata_phrase = "UPDATE tl_accounts SET other=%s WHERE user_id='%s' and provider_id='%s'" % (extra_data, Auth.uid, provider_id)
             c.execute(xdata_phrase)
         except sqlite3.Error as e:
             conn.rollback()
@@ -62,7 +62,7 @@ def refresh(provider_id):
     extra_data={} # used to capture json response content that is not yet utilised. passed a dictionary to our db.
 
     # get the last known refresh token for the user / provider combination
-    c.execute("select r_token from accounts where user_id=? and provider_id=?", (Auth.uid, provider_id))
+    c.execute("select r_token from tl_accounts where user_id=? and provider_id=?", (Auth.uid, provider_id))
     refresh_token=c.fetchone()[0]
     payload = {'grant_type': 'refresh_token', 'client_id': Auth.client_id, \
                'client_secret': Auth.client_secret, 'refresh_token': refresh_token}
@@ -96,7 +96,7 @@ def refresh(provider_id):
                 count += 1
             else:
                 phrase += "%s='%s'" % (k, str(std_dict[k]))
-        phrase = "UPDATE accounts SET %s WHERE user_id = '%s' and provider_id = '%s' and r_token= '%s'" % (phrase, Auth.uid, provider_id, refresh_token)
+        phrase = "UPDATE tl_accounts SET %s WHERE user_id = '%s' and provider_id = '%s' and r_token= '%s'" % (phrase, Auth.uid, provider_id, refresh_token)
         phrase = phrase.strip()
 
         # write data to the database
@@ -142,7 +142,7 @@ def new_token(provider_id,access_code):
     extra_data={} # used to capture json response content that is not yet utilised. passed a dictionary to our db.
 
     # determine if the user / provider combination already exist
-    c.execute("select * from accounts where user_id=? and provider_id=?", (Auth.uid, provider_id))
+    c.execute("select * from tl_accounts where user_id=? and provider_id=?", (Auth.uid, provider_id))
     if c.fetchone()!=None:
         status = {'code': 400, 'desc': 'User/provider combination already exist. Use refresh instead'}
         conn.close()
@@ -188,7 +188,7 @@ def new_token(provider_id,access_code):
             places = "?," * (len(col_list) - 1) + '?'
 
             # create a SQL execution phrase
-            phrase = "INSERT INTO accounts VALUES (%s)" % (places)
+            phrase = "INSERT INTO tl_accounts VALUES (%s)" % (places)
             phrase = phrase.strip()
 
             # write data to the database
@@ -225,7 +225,7 @@ def access_token(provider_id):
     c = conn.cursor()
 
     # get the expiry value for the current token
-    c.execute("select r_lasttime, r_sec, a_token from accounts where user_id=? and provider_id=?", (Auth.uid, provider_id))
+    c.execute("select r_lasttime, r_sec, a_token from tl_accounts where user_id=? and provider_id=?", (Auth.uid, provider_id))
     v=(c.fetchone())
     r_lasttime=v[0]
     r_sec=v[1]-120 # use an expiry somewhat shorter in case processing time expires a token prior to using it
@@ -238,12 +238,12 @@ def access_token(provider_id):
         return(v[2])
     else: # requests a new token, save it to the db, and issue it
         refresh(provider_id)
-        c.execute("select a_token from accounts where user_id=? and provider_id=?", (Auth.uid, provider_id))
+        c.execute("select a_token from tl_accounts where user_id=? and provider_id=?", (Auth.uid, provider_id))
         return(c.fetchone()[0])
 
 
 
 #Various testing calls - delete when not required any longer
 
-#Auth("bill@fred.com")
-#new_token('mock','f73283d2a1eb8cdf026a9ca1543263e9906a622005dff3950d4d809939321de0')
+#Auth("ENTER IT HERE")
+#new_token('ENTER PROVIDER HERE','ENTER TOKEN FROM TL TEST PAGE HERE')
