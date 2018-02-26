@@ -1,10 +1,11 @@
 class Auth(object):
+    import tl_access
     """TL_auth creates and/or updates tokens for user accounts via truelayer.
         for more information on truelayer see http://docs.truelayer.com/"""
     email_primary=""
     uid=""
-    client_id="goldader-znsm"
-    client_secret="xlbucdespuhv4zsdf8y2z"
+    client_id=tl_access.TL_access.client_id
+    client_secret=tl_access.TL_access.client_secret
     token_url="https://auth.truelayer.com/connect/token"
     red_url="https://console.truelayer.com/redirect-page"
 
@@ -245,5 +246,5 @@ def access_token(provider_id):
 
 #Various testing calls - delete when not required any longer
 
-#Auth("ENTER IT HERE")
-#new_token('ENTER PROVIDER HERE','ENTER TOKEN FROM TL TEST PAGE HERE')
+Auth("bill@fred.com")
+refresh('mock')

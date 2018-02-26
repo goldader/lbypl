@@ -414,7 +414,7 @@ class Tbl_maint(object):
                     finally:
                         conn.commit()
         status = {'code': 200, 'desc': 'Success'}
-        return ('status')
+        return (status)
 
     def tl_card_account_info(primary_email):
         # Updates db with truelayer card account information and calls necessary routines for table maintenance
@@ -663,8 +663,8 @@ class Tbl_maint(object):
         return (status)
 
 
-Tbl_maint('tl_account_trans')
-print(Tbl_maint.tl_account_trans('rmacmillan@bink.com'))
+#Tbl_maint('tl_account_trans')
+#print(Tbl_maint.tl_account_trans('rmacmillan@bink.com'))
 
 """ Use the below to create tables based on json.  Allows you to check it first. Modify calls as required before doing so
 import requests
