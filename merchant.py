@@ -20,6 +20,7 @@ class Merchant(object):
         return(c.fetchone())
 
     def merchant_group_info(self, merchant_id):
+
         # retrives a list of merchant brand information for use by an app or website
         # use where a list of merchants with associated details is required.  For single merchant requets utilise merchant_info
         import sqlite3

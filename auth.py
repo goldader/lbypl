@@ -246,5 +246,5 @@ def access_token(provider_id):
 
 #Various testing calls - delete when not required any longer
 
-Auth("bill@fred.com")
-refresh('mock')
+#Auth("bill@fred.com")
+#refresh('mock')
